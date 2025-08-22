@@ -1,0 +1,40 @@
+name: Deploy to S3
+
+# When should this workflow run?
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Set permissions for OIDC token
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Step 1: Get the code from repository
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Step 2: Configure AWS credentials using assumed role
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    # Step 3: Sync files to S3 bucket
+    - name: Deploy to S3
+      run: |
+        aws s3 sync . s3://${{ secrets.S3_BUCKET_NAME }} --delete --exclude ".git/*" --exclude ".github/*"
+        
+    # Step 4: Print success message
+    - name: Deployment Success
+      run: |
+        echo "🚀 Website deployed successfully!"
+        echo "🌐 URL: http://${{ secrets.S3_BUCKET_NAME }}.s3-website-${{ secrets.AWS_REGION }}.amazonaws.com"
